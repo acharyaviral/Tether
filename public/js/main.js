@@ -27,7 +27,6 @@ socket.on("message", (message) => {
 	scrollToBottom();
 });
 
-// Handle message submission
 chatForm.addEventListener("submit", (e) => {
 	e.preventDefault();
 
@@ -47,15 +46,21 @@ chatForm.addEventListener("submit", (e) => {
 // Display a new message in the chat window
 function displayMessage(message) {
 	const messageDiv = document.createElement("div");
-	messageDiv.classList.add("message");
+
+	// Check if the message was sent by the current user
+	if (message.username === username) {
+		messageDiv.classList.add("message", "sent"); // Add 'sent' class for alignment
+	} else {
+		messageDiv.classList.add("message", "received"); // Add 'received' class for alignment
+	}
 
 	messageDiv.innerHTML = `
-        <p class="meta">${message.username} <span>${message.time}</span></p>
+        <p class="meta ">${message.username} <span>${message.time}</span></p>
         <p class="text">${message.text}</p>
-      <p> use @ai to ask a question</p>
     `;
 
 	chatMessages.appendChild(messageDiv);
+	scrollToBottom();
 }
 
 // Update room name in the DOM
@@ -70,7 +75,6 @@ function updateUserList(users) {
 		.join("");
 }
 
-// Scroll chat to the bottom
 function scrollToBottom() {
 	chatMessages.scrollTop = chatMessages.scrollHeight;
 }

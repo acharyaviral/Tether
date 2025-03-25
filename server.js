@@ -4,6 +4,8 @@ const express = require("express");
 const socketio = require("socket.io");
 const { createAdapter } = require("@socket.io/redis-adapter");
 const { createClient } = require("redis");
+const { GoogleGenerativeAI } = require("@google/generative-ai"); // Corrected import
+
 require("dotenv").config();
 
 const formatMessage = require("./utils/messages");
@@ -18,10 +20,13 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server);
 
-// Set static folder
-app.use(express.static(path.join(__dirname, "public")));
+// Initialize Google Generative AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" }); // Initialize model
 
 const botName = "Tether! Bot";
+
+app.use(express.static(path.join(__dirname, "public")));
 
 (async () => {
 	try {
@@ -36,7 +41,6 @@ const botName = "Tether! Bot";
 	}
 })();
 
-// Handle socket connections
 io.on("connection", (socket) => {
 	console.log("New client connected", socket.id);
 
@@ -44,10 +48,7 @@ io.on("connection", (socket) => {
 		const user = userJoin(socket.id, username, room);
 		socket.join(user.room);
 
-		// Welcome current user
 		socket.emit("message", formatMessage(botName, "Welcome to Tether!"));
-
-		// Notify others in the room
 		socket.broadcast
 			.to(user.room)
 			.emit(
@@ -55,16 +56,35 @@ io.on("connection", (socket) => {
 				formatMessage(botName, `${user.username} has joined the chat`),
 			);
 
-		// Update room users list
 		io.to(user.room).emit("roomUsers", {
 			room: user.room,
 			users: getRoomUsers(user.room),
 		});
 	});
 
-	socket.on("chatMessage", (msg) => {
+	socket.on("chatMessage", async (msg) => {
 		const user = getCurrentUser(socket.id);
-		if (user) {
+		if (!user) return;
+
+		if (msg.startsWith("@ai")) {
+			try {
+				const prompt = msg.replace("@ai", "").trim();
+				const result = await model.generateContent(prompt);
+				const response = await result.response;
+				const aiResponse = response.text();
+
+				io.to(user.room).emit(
+					"message",
+					formatMessage("Tether! Bot", aiResponse),
+				);
+			} catch (error) {
+				console.error("AI response error:", error);
+				io.to(user.room).emit(
+					"message",
+					formatMessage("Tether! Bot", "AI is unavailable right now."),
+				);
+			}
+		} else {
 			io.to(user.room).emit("message", formatMessage(user.username, msg));
 		}
 	});

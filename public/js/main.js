@@ -52,6 +52,7 @@ function displayMessage(message) {
 	messageDiv.innerHTML = `
         <p class="meta">${message.username} <span>${message.time}</span></p>
         <p class="text">${message.text}</p>
+      <p> use @ai to ask a question</p>
     `;
 
 	chatMessages.appendChild(messageDiv);

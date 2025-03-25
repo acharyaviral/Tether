@@ -2,11 +2,11 @@ const path = require("node:path");
 const http = require("node:http");
 const express = require("express");
 const socketio = require("socket.io");
-const formatMessage = require("./utils/messages");
-const createAdapter = require("@socket.io/redis-adapter").createAdapter;
-const redis = require("redis");
+const { createAdapter } = require("@socket.io/redis-adapter");
+const { createClient } = require("redis");
 require("dotenv").config();
-const { createClient } = redis;
+
+const formatMessage = require("./utils/messages");
 const {
 	userJoin,
 	getCurrentUser,
@@ -24,26 +24,30 @@ app.use(express.static(path.join(__dirname, "public")));
 const botName = "Tether! Bot";
 
 (async () => {
-	const redisUrl = process.env.REDIS_URL;
-	pubClient = createClient({ url: redisUrl });
-
-	await pubClient.connect();
-	subClient = pubClient.duplicate();
-	io.adapter(createAdapter(pubClient, subClient));
+	try {
+		const redisUrl = process.env.REDIS_URL;
+		const pubClient = createClient({ url: redisUrl });
+		await pubClient.connect();
+		const subClient = pubClient.duplicate();
+		io.adapter(createAdapter(pubClient, subClient));
+		console.log("Redis adapter connected");
+	} catch (error) {
+		console.error("Error connecting to Redis:", error);
+	}
 })();
 
-// Run when client connects
+// Handle socket connections
 io.on("connection", (socket) => {
-	console.log(io.of("/").adapter);
+	console.log("New client connected", socket.id);
+
 	socket.on("joinRoom", ({ username, room }) => {
 		const user = userJoin(socket.id, username, room);
-
 		socket.join(user.room);
 
 		// Welcome current user
 		socket.emit("message", formatMessage(botName, "Welcome to Tether!"));
 
-		// Broadcast when a user connects
+		// Notify others in the room
 		socket.broadcast
 			.to(user.room)
 			.emit(
@@ -51,31 +55,28 @@ io.on("connection", (socket) => {
 				formatMessage(botName, `${user.username} has joined the chat`),
 			);
 
-		// Send users and room info
+		// Update room users list
 		io.to(user.room).emit("roomUsers", {
 			room: user.room,
 			users: getRoomUsers(user.room),
 		});
 	});
 
-	// Listen for chatMessage
 	socket.on("chatMessage", (msg) => {
 		const user = getCurrentUser(socket.id);
-
-		io.to(user.room).emit("message", formatMessage(user.username, msg));
+		if (user) {
+			io.to(user.room).emit("message", formatMessage(user.username, msg));
+		}
 	});
 
-	// Runs when client disconnects
 	socket.on("disconnect", () => {
 		const user = userLeave(socket.id);
-
 		if (user) {
 			io.to(user.room).emit(
 				"message",
 				formatMessage(botName, `${user.username} has left the chat`),
 			);
 
-			// Send users and room info
 			io.to(user.room).emit("roomUsers", {
 				room: user.room,
 				users: getRoomUsers(user.room),
@@ -85,5 +86,4 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

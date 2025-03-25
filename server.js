@@ -21,10 +21,11 @@ const io = socketio(server);
 // Set static folder
 app.use(express.static(path.join(__dirname, "public")));
 
-const botName = "ChatCord Bot";
+const botName = "Tether! Bot";
 
 (async () => {
-	pubClient = createClient({ url: "redis://localhost:6379" });
+	const redisUrl = process.env.REDIS_URL;
+	pubClient = createClient({ url: redisUrl });
 
 	await pubClient.connect();
 	subClient = pubClient.duplicate();
@@ -40,7 +41,7 @@ io.on("connection", (socket) => {
 		socket.join(user.room);
 
 		// Welcome current user
-		socket.emit("message", formatMessage(botName, "Welcome to ChatCord!"));
+		socket.emit("message", formatMessage(botName, "Welcome to Tether!"));
 
 		// Broadcast when a user connects
 		socket.broadcast

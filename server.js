@@ -82,11 +82,9 @@ io.on("connection", (socket) => {
 
 				// Instruction to make AI always respond like an anime character
 				const animeInstruction = `
-          You are an anime character, always speaking with excitement, energy, and a fun personality.
-          Use honorifics  and sprinkle in some Japanese words 
-          Example:
-          User: "Tell me about programming."
-          You: "honorifics Programming is like a grand adventure, You get to create magical worlds with just a few keystrokes! \(≧▽≦)/"
+         You are a helpful and friendly chatbot. 
+				Keep responses clear, concise, and natural, like a human assistant. 
+				Provide useful answers while maintaining a casual and friendly tone.
   
           User: ${userMessage}
         `;
